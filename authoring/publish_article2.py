@@ -60,17 +60,33 @@ def convert_docx_to_html_spire(docx_path: Path, output_path: Path, title: str):
     # Load and convert using Spire.Doc
     document = Document()
     document.LoadFromFile(str(docx_path))
+    # Control whether to include headers and footers in the exported HTML
+    document.HtmlExportOptions.HasHeadersFooters = False
+
+    # Specify the name of the CSS file to use for styling the exported HTML
+    document.HtmlExportOptions.CssStyleSheetFileName = "sample.css"
+
+    # Set the CSS stylesheet type to external, so the HTML file links to the specified CSS file instead of embedding styles inline
+    document.HtmlExportOptions.CssStyleSheetType = CssStyleSheetType.External
+
+    # Configure image export: do not embed images inside HTML, save them to a separate folder
+    document.HtmlExportOptions.ImageEmbedded = False
+    document.HtmlExportOptions.ImagesPath = "Images/"
+
+    # Export form fields as plain text instead of interactive form elements
+    document.HtmlExportOptions.IsTextInputFormFieldAsText = True
+    document.HtmlExportOptions.CssStyleSheetType = CssStyleSheetType.External
     document.SaveToFile(str(output_path), FileFormat.Html)
 
     # Read the output for post-processing
     html = output_path.read_text(encoding="utf-8")
 
-    # Remove unwanted inline <style> from Spire output if present
-    html = re.sub(r"<style[^>]*>.*?</style>", "", html, flags=re.DOTALL | re.IGNORECASE)
+    ## Remove unwanted inline <style> from Spire output if present
+    #html = re.sub(r"<style[^>]*>.*?</style>", "", html, flags=re.DOTALL | re.IGNORECASE)
 
-    # Inject CSS link
-    css_link = f'<link rel="stylesheet" href="{CSS_URL}">'
-    html = re.sub(r"</head>", css_link + "\n</head>", html, count=1, flags=re.IGNORECASE)
+    ## Inject CSS link
+    #css_link = f'<link rel="stylesheet" href="{CSS_URL}">'
+    #html = re.sub(r"</head>", css_link + "\n</head>", html, count=1, flags=re.IGNORECASE)
 
     # Fix image paths
     html = _debug_rewrite_image_paths(html, media_dir, output_path.stem, debug=False)
