@@ -6,6 +6,11 @@ from git import Repo
 from docx import Document
 import win32com.client as win32
 import re
+import win32com.client as win32
+
+import chardet
+
+
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_DIR = SCRIPT_DIR.parent
@@ -34,40 +39,58 @@ def get_title_from_word(docx_path: Path) -> str:
         return docx_path.stem
 
 
+
 def convert_docx_to_html(docx_path: Path, output_path: Path, title: str):
-    """Use MS Word COM to export HTML; post-process for site layout."""
-    print(f"Converting {docx_path.name} using Word…")
+    """Export Word → HTML via COM, fix encoding, and inject site CSS."""
+    print(f"Converting {docx_path.name} using Word COM...")
+
     word = win32.gencache.EnsureDispatch("Word.Application")
     word.Visible = False
-
     doc = word.Documents.Open(str(docx_path))
-    html_tmp = str(output_path)
-    doc.SaveAs(html_tmp, FileFormat=8)  # 8 = wdFormatHTML
+
+    # Try to enforce UTF-8 output
+    try:
+        doc.WebOptions.Encoding = win32.constants.msoEncodingUTF8
+    except Exception:
+        print("⚠️  Could not set WebOptions.Encoding; will fix after export.")
+
+    tmp_html = str(output_path)
+    doc.SaveAs2(tmp_html, FileFormat=win32.constants.wdFormatFilteredHTML)
     doc.Close(False)
     word.Quit()
 
-    raw = Path(html_tmp).read_bytes()
-    try:
-        html = raw.decode("utf-8")
-    except UnicodeDecodeError:
-        html = raw.decode("cp1252")  # Word’s default for .htm export
+    raw = Path(tmp_html).read_bytes()
 
-    # if you see weird â€™ type characters, they need re-decoding:
-    if "â" in html:
-        html = html.encode("latin1").decode("utf-8")
-        
-    # remove MS inline styles and insert your CSS link
+    # --- Detect actual encoding ---
+    det = chardet.detect(raw)
+    enc = det.get("encoding") or "cp1252"
+    confidence = det.get("confidence", 0)
+    print(f"Detected encoding: {enc} (confidence {confidence:.2f})")
+
+    # --- Decode safely ---
+    html = raw.decode(enc, errors="replace")
+
+    # If Word lied and we see garbage like â€™, fix by reinterpretation
+    if any(x in html for x in ["â", "Â", "€"]):
+        try:
+            html = html.encode("latin1").decode("utf-8")
+            print("Fixed double-encoded characters (latin1→utf-8).")
+        except Exception:
+            pass
+
+    # --- Clean up ---
     html = re.sub(r"<style[^>]*>.*?</style>", "", html, flags=re.DOTALL | re.IGNORECASE)
+    html = re.sub(r'charset=[^">]+', 'charset=utf-8', html, flags=re.IGNORECASE)
     css_link = f'<link rel="stylesheet" href="{CSS_URL}">\n'
     html = re.sub(r"</head>", css_link + "</head>", html, count=1, flags=re.IGNORECASE)
 
-    if not re.search(r"<h1\b", html, re.IGNORECASE):
+    if not re.search(r"<h1\b", html, re.IGNORECASE) and title:
         html = re.sub(r"<body([^>]*)>", rf"<body\1>\n<h1>{title}</h1>", html, 1, re.IGNORECASE)
 
     front_matter = f'---\nlayout: none\ntitle: "{title}"\n---\n'
     Path(output_path).write_text(front_matter + html, encoding="utf-8")
 
-    print(f"✅ HTML saved: {output_path.relative_to(REPO_DIR)}")
+    print(f"✅ HTML saved: {output_path.name}")
 
 
 def commit_and_push(repo_dir: Path, message: str):
