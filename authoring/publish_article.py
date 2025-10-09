@@ -45,7 +45,7 @@ def convert_docx_to_html(docx_path: Path, output_path: Path, title: str):
     # 2️⃣ make image paths relative
     html = html.replace(str(media_dir) + os.sep, f"{output_path.stem}_files/")
     html = html.replace(str(media_dir).replace("\\", "/") + "/", f"{output_path.stem}_files/")
-
+    
     wrapped = f"""---
 layout: none
 title: "{title}"
@@ -68,7 +68,6 @@ title: "{title}"
     output_path.write_text(wrapped, encoding="utf-8")
     print(f"✅ HTML created: {output_path.relative_to(REPO_DIR)}")
     print(f"🖼️ Media saved in: {media_dir.relative_to(REPO_DIR)}")
-
 
 def commit_and_push(repo_dir: Path, message: str):
     repo = Repo(repo_dir)
