@@ -89,7 +89,7 @@ def convert_docx_to_html_spire(docx_path: Path, output_path: Path, title: str):
     #html = re.sub(r"</head>", css_link + "\n</head>", html, count=1, flags=re.IGNORECASE)
 
     # Fix image paths
-    html = _debug_rewrite_image_paths(html, media_dir, output_path.stem, debug=False)
+    #html = _debug_rewrite_image_paths(html, media_dir, output_path.stem, debug=False)
 
     # Ensure title
     if not re.search(r"<h1\b", html, flags=re.IGNORECASE) and title:
