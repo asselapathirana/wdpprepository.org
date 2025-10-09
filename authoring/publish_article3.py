@@ -46,7 +46,11 @@ def convert_docx_to_html(docx_path: Path, output_path: Path, title: str):
     doc.Close(False)
     word.Quit()
 
-    html = Path(html_tmp).read_text(encoding="utf-8", errors="replace")
+    raw = Path(html_tmp).read_bytes()
+    try:
+        html = raw.decode("utf-8")
+    except UnicodeDecodeError:
+        html = raw.decode("cp1252")  # Word’s default for .htm export
 
 
     # remove MS inline styles and insert your CSS link
