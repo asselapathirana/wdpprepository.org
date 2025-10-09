@@ -58,7 +58,10 @@ def convert_docx_to_html(docx_path: Path, output_path: Path):
 
     # now convert HTML → Markdown
     md_text = pypandoc.convert_text(html, "markdown", format="html")
-
+    md_path =  REPO_DIR / Path(f"{docx_path.stem}.md")
+    print(md_path)
+    md_path.write_text(md_text, encoding="utf-8")
+    
     html = pypandoc.convert_text(md_text, "html", format="markdown")
     Path(output_path).write_text(html, encoding="utf-8")
     print(f"✅ HTML saved: {output_path.name}")
