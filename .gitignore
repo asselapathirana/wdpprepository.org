@@ -26,8 +26,6 @@ authoring/*.docx
 .vscode/
 .idea/
 
-# --- Output images/media (auto-generated) ---
-docs/*_files/
 
 # --- Optional: cache folders from other tools ---
 .cache/
