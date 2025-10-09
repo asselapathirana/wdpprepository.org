@@ -25,34 +25,8 @@ def _debug_rewrite_image_paths(html: str, media_dir: Path, output_stem: str, deb
         print(f"[DEBUG] Replaced {n_subs} image paths.")
     return new_html
 
-def get_title_from_word(docx_path: Path) -> str:
-    try:
-        doc = Document(docx_path)
-        core_props = doc.core_properties
-        title_prop = (core_props.title or "").strip()
 
-        print(f"🔍 Checking title property in {docx_path.name}...")
-        if title_prop:
-            print(f"✅ Found title property: '{title_prop}'")
-            return title_prop
-
-        print("⚠️  No title property found, checking for Heading 1...")
-        for p in doc.paragraphs:
-            style_name = getattr(p.style, "name", "").lower()
-            if style_name.startswith("heading 1"):
-                text = p.text.strip()
-                if text:
-                    print(f"✅ Found Heading 1: '{text}'")
-                    return text
-
-        print("⚠️  No Heading 1 found, using filename stem.")
-        return docx_path.stem
-
-    except Exception as e:
-        print(f"❌ Could not extract title from {docx_path.name}: {e}")
-        return docx_path.stem
-
-def convert_docx_to_html_spire(docx_path: Path, output_path: Path, title: str):
+def convert_docx_to_html_spire(docx_path: Path, output_path: Path, css: str):
     print(f"Converting {docx_path.name} → HTML using Spire.Doc …")
     media_dir = output_path.parent / f"{output_path.stem}_files"
     media_dir.mkdir(exist_ok=True)
@@ -64,14 +38,14 @@ def convert_docx_to_html_spire(docx_path: Path, output_path: Path, title: str):
     document.HtmlExportOptions.HasHeadersFooters = False
 
     # Specify the name of the CSS file to use for styling the exported HTML
-    document.HtmlExportOptions.CssStyleSheetFileName = "sample.css"
+    document.HtmlExportOptions.CssStyleSheetFileName = "XXX.css"
 
     # Set the CSS stylesheet type to external, so the HTML file links to the specified CSS file instead of embedding styles inline
     document.HtmlExportOptions.CssStyleSheetType = CssStyleSheetType.External
 
     # Configure image export: do not embed images inside HTML, save them to a separate folder
     document.HtmlExportOptions.ImageEmbedded = False
-    document.HtmlExportOptions.ImagesPath = "Images/"
+    document.HtmlExportOptions.ImagesPath = str(media_dir)+"/"
 
     # Export form fields as plain text instead of interactive form elements
     document.HtmlExportOptions.IsTextInputFormFieldAsText = True
@@ -89,15 +63,15 @@ def convert_docx_to_html_spire(docx_path: Path, output_path: Path, title: str):
     #html = re.sub(r"</head>", css_link + "\n</head>", html, count=1, flags=re.IGNORECASE)
 
     # Fix image paths
-    #html = _debug_rewrite_image_paths(html, media_dir, output_path.stem, debug=False)
+    html = _debug_rewrite_image_paths(html, media_dir, output_path.stem, debug=False)
 
-    # Ensure title
-    if not re.search(r"<h1\b", html, flags=re.IGNORECASE) and title:
-        html = re.sub(r"<body([^>]*)>", rf"<body\1>\n<h1>{title}</h1>", html, count=1, flags=re.IGNORECASE)
+    ## Ensure title
+    #if not re.search(r"<h1\b", html, flags=re.IGNORECASE) and title:
+    #    html = re.sub(r"<body([^>]*)>", rf"<body\1>\n<h1>{title}</h1>", html, count=1, flags=re.IGNORECASE)
 
     # Add front matter
-    front_matter = f'---\nlayout: none\ntitle: "{title}"\n---\n'
-    output_path.write_text(front_matter + html, encoding="utf-8")
+    #front_matter = f'---\nlayout: none\ntitle: "{title}"\n---\n'
+    output_path.write_text(html, encoding="utf-8")
 
     print(f"✅ HTML created: {output_path.relative_to(REPO_DIR)}")
     print(f"🖼️ Media saved in: {media_dir.relative_to(REPO_DIR)}")
@@ -125,11 +99,11 @@ def main():
         print(f"❌ Word file not found: {word_file}")
         sys.exit(1)
 
-    title = get_title_from_word(word_file)
+
     DOCS_DIR.mkdir(exist_ok=True)
     output_html = DOCS_DIR / f"{word_file.stem}.html"
 
-    convert_docx_to_html_spire(word_file, output_html, title)
+    convert_docx_to_html_spire(word_file, output_html, CSS_URL)
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
     commit_and_push(REPO_DIR, f"Update {word_file.name} → HTML ({timestamp})")
 
