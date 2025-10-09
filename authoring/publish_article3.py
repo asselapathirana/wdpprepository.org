@@ -55,6 +55,16 @@ def convert_docx_to_html(docx_path: Path, output_path: Path):
     css_link = f'<link rel="stylesheet" href="{CSS_URL}">\n'
     html = re.sub(r"</head>", css_link + "</head>", html, count=1, flags=re.IGNORECASE)
 
+    # Remove Word-specific paragraph classes
+    html = re.sub(r'<p class="MsoNormal"', "<p", html, flags=re.IGNORECASE)
+
+    # Remove language spans (but keep their inner content)
+    html = re.sub(r'<span[^>]*lang="[^"]*"[^>]*>(.*?)</span>', r'\1', html, flags=re.IGNORECASE | re.DOTALL)
+
+    # Drop empty spans that Word scatters around
+    html = re.sub(r'<span[^>]*>\s*</span>', "", html, flags=re.IGNORECASE)
+
+
     Path(output_path).write_text(html, encoding="utf-8")
     print(f"✅ HTML saved: {output_path.name}")
 
