@@ -87,11 +87,14 @@ def get_title_from_word(docx_path: Path) -> str:
 def convert_docx_to_html(docx_path: Path, output_path: Path, title: str):
     media_dir = output_path.parent / f"{output_path.stem}_files"
     media_dir.mkdir(exist_ok=True)
+    # ✅ use standalone to get full structure (title, subtitle)
     extra_args = ["--standalone", "--extract-media", str(media_dir)]
 
     print(f"Converting {docx_path.name} → HTML …")
     html = pypandoc.convert_file(str(docx_path), "html", extra_args=extra_args)
 
+    # 🧹 remove Pandoc’s default <style> block
+    html = re.sub(r"<style[^>]*>.*?</style>", "", html, flags=re.DOTALL)
     # 🔧 Rewrite absolute paths to relative, with debug prints
     html = _debug_rewrite_image_paths(html, media_dir, output_path.stem, debug=True)
 
