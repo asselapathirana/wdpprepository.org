@@ -1,11 +1,12 @@
 import sys
+import os
 from pathlib import Path
 from datetime import datetime
 import pypandoc
 from git import Repo
 from docx import Document
 
-pypandoc.download_pandoc()
+# run only first time pypandoc.download_pandoc()
 
 # === Locate folders dynamically ===
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -31,14 +32,19 @@ def get_title_from_word(docx_path: Path) -> str:
         print(f"⚠️  Could not extract title: {e}")
         return docx_path.stem
 
-
 def convert_docx_to_html(docx_path: Path, output_path: Path, title: str):
     media_dir = output_path.parent / f"{output_path.stem}_files"
     media_dir.mkdir(exist_ok=True)
+
+    # 1️⃣ use relative extract folder
     extra_args = ["--extract-media", str(media_dir)]
 
     print(f"Converting {docx_path.name} → HTML …")
     html = pypandoc.convert_file(str(docx_path), "html", extra_args=extra_args)
+
+    # 2️⃣ make image paths relative
+    html = html.replace(str(media_dir) + os.sep, f"{output_path.stem}_files/")
+    html = html.replace(str(media_dir).replace("\\", "/") + "/", f"{output_path.stem}_files/")
 
     wrapped = f"""---
 layout: none
