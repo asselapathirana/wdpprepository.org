@@ -121,7 +121,7 @@ title: "{title}"
 
 def commit_and_push(repo_dir: Path, message: str):
     repo = Repo(repo_dir)
-    repo.git.add(all=True)
+    repo.git.add(A=True)
     if repo.is_dirty():
         repo.index.commit(message)
         repo.git.push(REMOTE, BRANCH)
