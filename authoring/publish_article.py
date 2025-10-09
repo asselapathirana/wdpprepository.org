@@ -97,6 +97,12 @@ def main():
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
     commit_and_push(REPO_DIR, f"Update {word_file.name} → HTML ({timestamp})")
 
+    # --- print live URL ---
+    base_url = "https://asselapathirana.github.io/wdpprepository.org"
+    print(f"\n🌐 Live page URL:")
+    print(f"{base_url}/{output_html.name}")
+    print()
+
 
 if __name__ == "__main__":
     main()
