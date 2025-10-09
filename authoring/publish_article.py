@@ -84,35 +84,41 @@ def get_title_from_word(docx_path: Path) -> str:
         print(f"⚠️  Could not extract title: {e}")
         return docx_path.stem
 
+import re
+from pathlib import Path
+
 def convert_docx_to_html(docx_path: Path, output_path: Path, title: str):
     media_dir = output_path.parent / f"{output_path.stem}_files"
     media_dir.mkdir(exist_ok=True)
-    # ✅ use standalone to get full structure (title, subtitle)
-    extra_args = ["--standalone", "--extract-media", str(media_dir)]
 
+    # Use standalone for proper <html>/<head>/<body> and metadata
+    extra_args = ["--standalone", "--extract-media", str(media_dir)]
     print(f"Converting {docx_path.name} → HTML …")
     html = pypandoc.convert_file(str(docx_path), "html", extra_args=extra_args)
 
-    # 🧹 remove Pandoc’s default <style> block
-    html = re.sub(r"<style[^>]*>.*?</style>", "", html, flags=re.DOTALL)
-    # 🔧 Rewrite absolute paths to relative, with debug prints
-    html = _debug_rewrite_image_paths(html, media_dir, output_path.stem, debug=True)
+    # 1) Remove Pandoc's embedded <style>…</style>
+    html = re.sub(r"<style[^>]*>.*?</style>", "", html, flags=re.DOTALL|re.IGNORECASE)
 
-    wrapped = f"""---
-layout: none
-title: "{title}"
----
-<html>
-<head>
-<meta charset="utf-8">
-<link rel="stylesheet" href="{CSS_URL}">
-</head>
-<body>
-{html}
-</body>
-</html>"""
+    # 2) Inject WDPP CSS link into the existing <head>
+    css_link = f'<link rel="stylesheet" href="{CSS_URL}">'
+    if "</head>" in html.lower():
+        html = re.sub(r"</head>", css_link + "\n</head>", html, count=1, flags=re.IGNORECASE)
+    else:
+        # Fallback: prepend a minimal head
+        html = f"<head>\n{css_link}\n</head>\n" + html
 
-    output_path.write_text(wrapped, encoding="utf-8")
+    # 3) Fix absolute image paths → relative
+    html = _debug_rewrite_image_paths(html, media_dir, output_path.stem, debug=False)
+
+    # 4) If no <h1> exists, inject one using the extracted title (keeps subtitle logic simple)
+    if not re.search(r"<h1\b", html, flags=re.IGNORECASE) and title:
+        html = re.sub(r"<body([^>]*)>", rf"<body\1>\n<h1>{title}</h1>", html, count=1, flags=re.IGNORECASE)
+
+    # 5) Front matter on top; DO NOT wrap again (Pandoc already gave full HTML)
+    front_matter = f'---\nlayout: none\ntitle: "{title}"\n---\n'
+    final_html = front_matter + html
+
+    output_path.write_text(final_html, encoding="utf-8")
     print(f"✅ HTML created: {output_path.relative_to(REPO_DIR)}")
     print(f"🖼️ Media saved in: {media_dir.relative_to(REPO_DIR)}")
 
