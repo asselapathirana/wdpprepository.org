@@ -71,17 +71,31 @@ def _debug_rewrite_image_paths(html: str, media_dir: Path, output_stem: str, deb
 
 
 def get_title_from_word(docx_path: Path) -> str:
-    """Return first Heading 1 text, or filename if none."""
+    """Return title from Word 'Title' property, else first Heading 1, else filename."""
     try:
         doc = Document(docx_path)
+        core_props = doc.core_properties
+        title_prop = (core_props.title or "").strip()
+
+        print(f"🔍 Checking title property in {docx_path.name}...")
+        if title_prop:
+            print(f"✅ Found title property: '{title_prop}'")
+            return title_prop
+
+        print("⚠️  No title property found, checking for Heading 1...")
         for p in doc.paragraphs:
-            if p.style.name.lower().startswith("heading 1"):
+            style_name = getattr(p.style, "name", "").lower()
+            if style_name.startswith("heading 1"):
                 text = p.text.strip()
                 if text:
+                    print(f"✅ Found Heading 1: '{text}'")
                     return text
+
+        print("⚠️  No Heading 1 found, using filename stem.")
         return docx_path.stem
+
     except Exception as e:
-        print(f"⚠️  Could not extract title: {e}")
+        print(f"❌ Could not extract title from {docx_path.name}: {e}")
         return docx_path.stem
 
 import re
