@@ -1,0 +1,33 @@
+# --- Python environment ---
+.venv/
+__pycache__/
+*.pyc
+
+# --- OS clutter ---
+.DS_Store
+Thumbs.db
+
+# --- Pandoc temp files ---
+*.log
+*.aux
+*.out
+*.tmp
+
+# --- Word source files ---
+authoring/*.docx
+!authoring/WDPP_Word_Template.docx   # keep the template versioned
+
+# --- Notebook / data scratch ---
+*.ipynb_checkpoints
+*.bak
+*.old
+
+# --- IDE files ---
+.vscode/
+.idea/
+
+# --- Output images/media (auto-generated) ---
+docs/*_files/
+
+# --- Optional: cache folders from other tools ---
+.cache/

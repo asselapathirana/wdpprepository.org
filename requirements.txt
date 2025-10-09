@@ -1,0 +1,8 @@
+# Core libraries
+pypandoc>=1.13
+python-docx>=1.1.2
+gitpython>=3.1.43
+
+# Optional but useful
+# If you prefer to have Pandoc auto-downloaded by pypandoc:
+pypandoc[all]>=1.13
