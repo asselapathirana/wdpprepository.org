@@ -4,6 +4,7 @@ from datetime import datetime
 from git import Repo
 import win32com.client as win32
 import re
+import pypandoc
 import chardet
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -55,16 +56,10 @@ def convert_docx_to_html(docx_path: Path, output_path: Path):
     css_link = f'<link rel="stylesheet" href="{CSS_URL}">\n'
     html = re.sub(r"</head>", css_link + "</head>", html, count=1, flags=re.IGNORECASE)
 
-    # Remove Word-specific paragraph classes
-    html = re.sub(r'<p class="MsoNormal"', "<p", html, flags=re.IGNORECASE)
+    # now convert HTML → Markdown
+    md_text = pypandoc.convert_text(html, "markdown", format="html")
 
-    # Remove language spans (but keep their inner content)
-    html = re.sub(r'<span[^>]*lang="[^"]*"[^>]*>(.*?)</span>', r'\1', html, flags=re.IGNORECASE | re.DOTALL)
-
-    # Drop empty spans that Word scatters around
-    html = re.sub(r'<span[^>]*>\s*</span>', "", html, flags=re.IGNORECASE)
-
-
+    html = pypandoc.convert_text(md_text, "html", format="markdown")
     Path(output_path).write_text(html, encoding="utf-8")
     print(f"✅ HTML saved: {output_path.name}")
 
