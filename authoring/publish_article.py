@@ -1,6 +1,7 @@
 import sys
 import os
 from pathlib import Path
+import re
 from datetime import datetime
 import pypandoc
 from git import Repo
@@ -16,6 +17,57 @@ CSS_URL = "https://wdpprepository.org/static/css/project.css"
 REMOTE = "origin"
 BRANCH = "main"
 # ==================================
+
+def _debug_rewrite_image_paths(html: str, media_dir: Path, output_stem: str, debug: bool = True) -> str:
+    """
+    Rewrite absolute image paths pointing to media_dir → relative '<stem>_files/...'
+    and print useful diagnostics.
+    """
+    # Build both Windows and POSIX-looking variants of the absolute media path
+    media_abs = str(media_dir.resolve())
+    media_win = media_abs.replace('/', '\\')
+    media_posix = media_abs.replace('\\', '/')
+
+    # Pattern that matches either prefix (with trailing slash or backslash)
+    pat = re.compile(
+        rf"{re.escape(media_win)}[\\/]|{re.escape(media_posix)}/",
+        flags=re.IGNORECASE
+    )
+
+    # --- Debug: show context before rewrite ---
+    if debug:
+        print("\n[DEBUG] media_dir (resolved):")
+        print("  win :", media_win)
+        print("  posix:", media_posix)
+
+        # Peek at first few <img> src attributes
+        srcs = re.findall(r'<img[^>]+src=["\']([^"\']+)["\']', html, flags=re.IGNORECASE)
+        print(f"[DEBUG] Found {len(srcs)} <img> tags.")
+        for i, s in enumerate(srcs[:5], 1):
+            print(f"  [img {i}] {s}")
+
+    # Do the replacement
+    new_html, n_subs = pat.subn(f"{output_stem}_files/", html)
+
+    # --- Debug: after rewrite ---
+    if debug:
+        print(f"[DEBUG] Replacements made: {n_subs}")
+        new_srcs = re.findall(r'<img[^>]+src=["\']([^"\']+)["\']', new_html, flags=re.IGNORECASE)
+        for i, s in enumerate(new_srcs[:5], 1):
+            print(f"  [img {i} after] {s}")
+
+        # If nothing changed, show a small snippet around the first <img> for inspection
+        if n_subs == 0 and srcs:
+            snippet = re.search(r'<img[^>]+>', html, flags=re.IGNORECASE)
+            if snippet:
+                start = max(0, snippet.start() - 120)
+                end = min(len(html), snippet.end() + 120)
+                print("\n[DEBUG] First <img> snippet (no replacements happened):")
+                print(html[start:end])
+                print("[DEBUG] ^ Check if the src starts with the media_dir above.")
+
+    return new_html
+
 
 
 def get_title_from_word(docx_path: Path) -> str:
@@ -35,17 +87,14 @@ def get_title_from_word(docx_path: Path) -> str:
 def convert_docx_to_html(docx_path: Path, output_path: Path, title: str):
     media_dir = output_path.parent / f"{output_path.stem}_files"
     media_dir.mkdir(exist_ok=True)
-
-    # 1️⃣ use relative extract folder
     extra_args = ["--extract-media", str(media_dir)]
 
     print(f"Converting {docx_path.name} → HTML …")
     html = pypandoc.convert_file(str(docx_path), "html", extra_args=extra_args)
 
-    # 2️⃣ make image paths relative
-    html = html.replace(str(media_dir) + os.sep, f"{output_path.stem}_files/")
-    html = html.replace(str(media_dir).replace("\\", "/") + "/", f"{output_path.stem}_files/")
-    
+    # 🔧 Rewrite absolute paths to relative, with debug prints
+    html = _debug_rewrite_image_paths(html, media_dir, output_path.stem, debug=True)
+
     wrapped = f"""---
 layout: none
 title: "{title}"
@@ -68,6 +117,7 @@ title: "{title}"
     output_path.write_text(wrapped, encoding="utf-8")
     print(f"✅ HTML created: {output_path.relative_to(REPO_DIR)}")
     print(f"🖼️ Media saved in: {media_dir.relative_to(REPO_DIR)}")
+
 
 def commit_and_push(repo_dir: Path, message: str):
     repo = Repo(repo_dir)
