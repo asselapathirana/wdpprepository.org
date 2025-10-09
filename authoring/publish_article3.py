@@ -52,7 +52,10 @@ def convert_docx_to_html(docx_path: Path, output_path: Path, title: str):
     except UnicodeDecodeError:
         html = raw.decode("cp1252")  # Word’s default for .htm export
 
-
+    # if you see weird â€™ type characters, they need re-decoding:
+    if "â" in html:
+        html = html.encode("latin1").decode("utf-8")
+        
     # remove MS inline styles and insert your CSS link
     html = re.sub(r"<style[^>]*>.*?</style>", "", html, flags=re.DOTALL | re.IGNORECASE)
     css_link = f'<link rel="stylesheet" href="{CSS_URL}">\n'
