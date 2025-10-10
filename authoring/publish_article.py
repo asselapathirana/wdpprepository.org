@@ -150,7 +150,7 @@ def commit_and_push(repo_dir: Path, message: str):
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python authoring/publish_word_page.py <word_file>")
+        print("Usage: python authoring/publish_word_page.py <word_file> (in ./authoring folder)")
         sys.exit(1)
 
     # Handle relative paths gracefully (even if run from repo root)
